@@ -14,8 +14,13 @@ This repository contains:
 
 
 PC_Python_R_Scripts/
+
 ├── python/ # Python scripts (models, preprocessing, utilities)
+
 ├── R/ # R scripts for analysis and visualization
+
 ├── data/ # Preprocessed datasets ready for use
+
 ├── README.md # This file
+
 └── requirements.txt # Python dependencies
