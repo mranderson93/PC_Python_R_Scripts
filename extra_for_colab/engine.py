@@ -295,7 +295,10 @@ def train(model: torch.nn.Module,
         f"Train Loss: {train_loss:.4f} | Acc: {train_acc:.4f} | Prec: {train_prec:.4f} | Recall: {train_rec:.4f} | F1: {train_f1:.4f} | ROC-AUC: {train_auc:.4f} || "
         f"Test Loss: {test_loss:.4f} | Acc: {test_acc:.4f} | Prec: {test_prec:.4f} | Recall: {test_rec:.4f} | F1: {test_f1:.4f} | ROC-AUC: {test_auc:.4f}"
     )
+<<<<<<< HEAD
 
+=======
+>>>>>>> 48e4af748f9d4a2cf5656d1c7f78583bfaa2e954
     return results
 
 
