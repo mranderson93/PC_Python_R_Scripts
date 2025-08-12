@@ -148,10 +148,10 @@ def train(model: torch.nn.Module,
     return results
 
 
-from tqdm.auto import tqdm
-from torch.optim.lr_scheduler import StepLR
-from torchmetrics.classification import BinaryAccuracy, BinaryPrecision, BinaryRecall, BinaryF1Score, BinaryAUROC
-import torch
+# from tqdm.auto import tqdm
+# from torch.optim.lr_scheduler import StepLR
+# from torchmetrics.classification import BinaryAccuracy, BinaryPrecision, BinaryRecall, BinaryF1Score, BinaryAUROC
+# import torch
 
 # === Train Step ===
 def train_step(model, dataloader, loss_fn, optimizer, device):
@@ -295,64 +295,60 @@ def train(model: torch.nn.Module,
         f"Train Loss: {train_loss:.4f} | Acc: {train_acc:.4f} | Prec: {train_prec:.4f} | Recall: {train_rec:.4f} | F1: {train_f1:.4f} | ROC-AUC: {train_auc:.4f} || "
         f"Test Loss: {test_loss:.4f} | Acc: {test_acc:.4f} | Prec: {test_prec:.4f} | Recall: {test_rec:.4f} | F1: {test_f1:.4f} | ROC-AUC: {test_auc:.4f}"
     )
-<<<<<<< HEAD
-
-=======
->>>>>>> 48e4af748f9d4a2cf5656d1c7f78583bfaa2e954
     return results
 
 
 
 
-    from copy import deepcopy
+#     from copy import deepcopy
 
-def hyperparameter_tuning(param_grid, 
-                          train_dataloader, 
-                          test_dataloader, 
-                          device, 
-                          epochs=50):
+# def hyperparameter_tuning(param_grid, 
+#                           train_dataloader, 
+#                           test_dataloader, 
+#                           device, 
+#                           epochs=50):
 
-    best_val_score = -float('inf')
-    best_params = None
-    best_results = None
+#     best_val_score = -float('inf')
+#     best_params = None
+#     best_results = None
 
-    for params in param_grid:
-        print(f"Training with d_model={params['d_model']}, nhead={params['nhead']}, "
-              f"num_layers={params['num_layers']}, dropout={params['dropout']}, lr={params['lr']}")
+#     for params in param_grid:
+#         print(f"Training with d_model={params['d_model']}, nhead={params['nhead']}, "
+#               f"num_layers={params['num_layers']}, dropout={params['dropout']}, lr={params['lr']}")
 
-        # Create model with given hyperparameters
-        model = TabTransformer(input_dim=100,
-                               d_model=params['d_model'],
-                               nhead=params['nhead'],
-                               num_layers=params['num_layers'],
-                               dropout=params['dropout']).to(device)
+#         # Create model with given hyperparameters
+#         model = TabTransformer(input_dim=100,
+#                                d_model=params['d_model'],
+#                                nhead=params['nhead'],
+#                                num_layers=params['num_layers'],
+#                                dropout=params['dropout']).to(device)
 
-        loss_fn = nn.BCEWithLogitsLoss()
-        optimizer = torch.optim.Adam(model.parameters(),
-                                     lr=params['lr'],
-                                     weight_decay=1e-4)
+#         loss_fn = nn.BCEWithLogitsLoss()
+#         optimizer = torch.optim.Adam(model.parameters(),
+#                                      lr=params['lr'],
+#                                      weight_decay=1e-4)
 
-        # Train model and get results dictionary
-        results = train(model=model,
-                        train_dataloader=train_dataloader,
-                        test_dataloader=test_dataloader,
-                        optimizer=optimizer,
-                        loss_fn=loss_fn,
-                        device=device,
-                        epochs=epochs)
+#         # Train model and get results dictionary
+#         results = train(model=model,
+#                         train_dataloader=train_dataloader,
+#                         test_dataloader=test_dataloader,
+#                         optimizer=optimizer,
+#                         loss_fn=loss_fn,
+#                         device=device,
+#                         epochs=epochs)
 
-        # Pick best validation score (ROC-AUC here) from all epochs
-        max_val_roc_auc = max(results['test_roc_auc'])
+#         # Pick best validation score (ROC-AUC here) from all epochs
+#         max_val_roc_auc = max(results['test_roc_auc'])
 
-        print(f"Max val ROC-AUC: {max_val_roc_auc:.4f}")
+#         print(f"Max val ROC-AUC: {max_val_roc_auc:.4f}")
 
-        if max_val_roc_auc > best_val_score:
-            best_val_score = max_val_roc_auc
-            best_params = params
-            best_results = deepcopy(results)
+#         if max_val_roc_auc > best_val_score:
+#             best_val_score = max_val_roc_auc
+#             best_params = params
+#             best_results = deepcopy(results)
 
-    print(f"\nBest params: {best_params}")
-    print(f"Best validation ROC-AUC: {best_val_score:.4f}")
+#     print(f"\nBest params: {best_params}")
+#     print(f"Best validation ROC-AUC: {best_val_score:.4f}")
 
-    return best_params, best_results
+#     return best_params, best_results
 
