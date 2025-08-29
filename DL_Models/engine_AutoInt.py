@@ -142,7 +142,7 @@ def train_AutoInt(
     loss_fn: nn.Module,
     device: torch.device,
     epochs: int = 5,
-    patience: int = 20,   # early stopping
+    patience: int = 20,  # early stopping
 ):
     """
     Complete training loop for AutoInt with metrics tracking + early stopping.
@@ -191,13 +191,13 @@ def train_AutoInt(
         results["test_f1"].append(test_f1)
         results["test_roc_auc"].append(test_auc)
 
-        print(
-            f"Epoch: {epoch+1} | "
-            f"Train Loss: {train_loss:.4f} | Acc: {train_acc:.4f} | Prec: {train_prec:.4f} | "
-            f"Recall: {train_rec:.4f} | F1: {train_f1:.4f} | ROC-AUC: {train_auc:.4f} || "
-            f"Test Loss: {test_loss:.4f} | Acc: {test_acc:.4f} | Prec: {test_prec:.4f} | "
-            f"Recall: {test_rec:.4f} | F1: {test_f1:.4f} | ROC-AUC: {test_auc:.4f}"
-        )
+        # print(
+        #     f"Epoch: {epoch+1} | "
+        #     f"Train Loss: {train_loss:.4f} | Acc: {train_acc:.4f} | Prec: {train_prec:.4f} | "
+        #     f"Recall: {train_rec:.4f} | F1: {train_f1:.4f} | ROC-AUC: {train_auc:.4f} || "
+        #     f"Test Loss: {test_loss:.4f} | Acc: {test_acc:.4f} | Prec: {test_prec:.4f} | "
+        #     f"Recall: {test_rec:.4f} | F1: {test_f1:.4f} | ROC-AUC: {test_auc:.4f}"
+        # )
 
         # ---- Early Stopping Check ----
         if test_loss < best_loss:
@@ -212,20 +212,23 @@ def train_AutoInt(
 
     # === Final Summary ===
     print("\n===== Final Training Results =====")
-    print(f"Train Loss: {results['train_loss'][-1]:.4f} | "
-          f"Acc: {results['train_acc'][-1]:.4f} | "
-          f"Prec: {results['train_precision'][-1]:.4f} | "
-          f"Recall: {results['train_recall'][-1]:.4f} | "
-          f"F1: {results['train_f1'][-1]:.4f} | "
-          f"ROC-AUC: {results['train_roc_auc'][-1]:.4f}")
+    print(
+        f"Train Loss: {results['train_loss'][-1]:.4f} | "
+        f"Acc: {results['train_acc'][-1]:.4f} | "
+        f"Prec: {results['train_precision'][-1]:.4f} | "
+        f"Recall: {results['train_recall'][-1]:.4f} | "
+        f"F1: {results['train_f1'][-1]:.4f} | "
+        f"ROC-AUC: {results['train_roc_auc'][-1]:.4f}"
+    )
 
-    print(f"Test Loss: {results['test_loss'][-1]:.4f} | "
-          f"Acc: {results['test_acc'][-1]:.4f} | "
-          f"Prec: {results['test_precision'][-1]:.4f} | "
-          f"Recall: {results['test_recall'][-1]:.4f} | "
-          f"F1: {results['test_f1'][-1]:.4f} | "
-          f"ROC-AUC: {results['test_roc_auc'][-1]:.4f}")
+    print(
+        f"Test Loss: {results['test_loss'][-1]:.4f} | "
+        f"Acc: {results['test_acc'][-1]:.4f} | "
+        f"Prec: {results['test_precision'][-1]:.4f} | "
+        f"Recall: {results['test_recall'][-1]:.4f} | "
+        f"F1: {results['test_f1'][-1]:.4f} | "
+        f"ROC-AUC: {results['test_roc_auc'][-1]:.4f}"
+    )
     print("==================================\n")
 
     return results
-
