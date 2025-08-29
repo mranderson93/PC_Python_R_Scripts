@@ -1,176 +1,150 @@
-from tqdm.auto import tqdm
-from torchmetrics.classification import (
-    Accuracy,
-    Precision,
-    Recall,
-    F1Score,
-    AUROC,
-)
 import torch
 import torch.nn as nn
-
-
-# === Train Step for NODE ===
+import torch.nn.functional as F
+from torchmetrics.classification import BinaryAccuracy, BinaryPrecision, BinaryRecall, BinaryF1Score, BinaryAUROC
+from tqdm.auto import tqdm
 def train_step_NODE(model, dataloader, loss_fn, optimizer, device):
     model.train()
     train_loss = 0
 
-    accuracy = Accuracy(task="multiclass", num_classes=model.leaf_weights.shape[-1]).to(
-        device
-    )
-    precision = Precision(
-        task="multiclass", num_classes=model.leaf_weights.shape[-1]
-    ).to(device)
-    recall = Recall(task="multiclass", num_classes=model.leaf_weights.shape[-1]).to(
-        device
-    )
-    f1 = F1Score(task="multiclass", num_classes=model.leaf_weights.shape[-1]).to(device)
-    auroc = AUROC(task="multiclass", num_classes=model.leaf_weights.shape[-1]).to(
-        device
-    )
+    # Metrics
+    accuracy = BinaryAccuracy().to(device)
+    precision = BinaryPrecision().to(device)
+    recall = BinaryRecall().to(device)
+    f1 = BinaryF1Score().to(device)
+    auroc = BinaryAUROC().to(device)
 
     all_probs, all_labels = [], []
 
     for x, y in dataloader:
-        x, y = x.to(device), y.to(device)
+        x, y = x.to(device), y.to(device).float().unsqueeze(1)
 
         optimizer.zero_grad()
-        logits = model(x)  # shape: [batch, num_classes]
+        logits = model(x)
         loss = loss_fn(logits, y)
         loss.backward()
         optimizer.step()
 
         train_loss += loss.item() * x.size(0)
-        probs = torch.softmax(logits, dim=1)
+        probs = torch.sigmoid(logits)
         all_probs.append(probs.detach())
         all_labels.append(y.detach())
 
     all_probs = torch.cat(all_probs)
     all_labels = torch.cat(all_labels)
+    preds = (all_probs > 0.5).float()
 
-    preds = torch.argmax(all_probs, dim=1)
-
-    acc = accuracy(preds, all_labels)
-    prec = precision(preds, all_labels)
-    rec = recall(preds, all_labels)
-    f1_score = f1(preds, all_labels)
-    roc_auc = auroc(all_probs, all_labels)
-
-    avg_loss = train_loss / len(dataloader.dataset)
     return (
-        avg_loss,
-        acc.item(),
-        prec.item(),
-        rec.item(),
-        f1_score.item(),
-        roc_auc.item(),
+        train_loss / len(dataloader.dataset),
+        accuracy(preds, all_labels).item(),
+        precision(preds, all_labels).item(),
+        recall(preds, all_labels).item(),
+        f1(preds, all_labels).item(),
+        auroc(all_probs, all_labels).item()
     )
 
-
-# === Test Step for NODE ===
 def test_step_NODE(model, dataloader, loss_fn, device):
     model.eval()
     test_loss = 0
 
-    accuracy = Accuracy(task="multiclass", num_classes=model.leaf_weights.shape[-1]).to(
-        device
-    )
-    precision = Precision(
-        task="multiclass", num_classes=model.leaf_weights.shape[-1]
-    ).to(device)
-    recall = Recall(task="multiclass", num_classes=model.leaf_weights.shape[-1]).to(
-        device
-    )
-    f1 = F1Score(task="multiclass", num_classes=model.leaf_weights.shape[-1]).to(device)
-    auroc = AUROC(task="multiclass", num_classes=model.leaf_weights.shape[-1]).to(
-        device
-    )
+    accuracy = BinaryAccuracy().to(device)
+    precision = BinaryPrecision().to(device)
+    recall = BinaryRecall().to(device)
+    f1 = BinaryF1Score().to(device)
+    auroc = BinaryAUROC().to(device)
 
     all_probs, all_labels = [], []
 
     with torch.inference_mode():
         for x, y in dataloader:
-            x, y = x.to(device), y.to(device)
+            x, y = x.to(device), y.to(device).float().unsqueeze(1)
             logits = model(x)
             loss = loss_fn(logits, y)
 
             test_loss += loss.item() * x.size(0)
-            probs = torch.softmax(logits, dim=1)
+            probs = torch.sigmoid(logits)
             all_probs.append(probs)
             all_labels.append(y)
 
     all_probs = torch.cat(all_probs)
     all_labels = torch.cat(all_labels)
-    preds = torch.argmax(all_probs, dim=1)
+    preds = (all_probs > 0.5).float()
 
-    acc = accuracy(preds, all_labels)
-    prec = precision(preds, all_labels)
-    rec = recall(preds, all_labels)
-    f1_score = f1(preds, all_labels)
-    roc_auc = auroc(all_probs, all_labels)
-
-    avg_loss = test_loss / len(dataloader.dataset)
     return (
-        avg_loss,
-        acc.item(),
-        prec.item(),
-        rec.item(),
-        f1_score.item(),
-        roc_auc.item(),
+        test_loss / len(dataloader.dataset),
+        accuracy(preds, all_labels).item(),
+        precision(preds, all_labels).item(),
+        recall(preds, all_labels).item(),
+        f1(preds, all_labels).item(),
+        auroc(all_probs, all_labels).item()
     )
 
-
-# === Training Loop for NODE ===
+# ==============================
+# Training Loop
+# ==============================
+# ==============================
+# Training Loop with Early Stopping
+# ==============================
 def train_NODE(
-    model: nn.Module,
-    train_dataloader: torch.utils.data.DataLoader,
-    test_dataloader: torch.utils.data.DataLoader,
-    optimizer: torch.optim.Optimizer,
-    loss_fn: nn.Module,
-    device: torch.device,
-    epochs: int = 5,
+    model,
+    train_dataloader,
+    test_dataloader,
+    optimizer,
+    loss_fn,
+    device,
+    epochs=100,
+    patience=20  # early stopping patience
 ):
     results = {
-        "train_loss": [],
-        "train_acc": [],
-        "train_precision": [],
-        "train_recall": [],
-        "train_f1": [],
-        "train_roc_auc": [],
-        "test_loss": [],
-        "test_acc": [],
-        "test_precision": [],
-        "test_recall": [],
-        "test_f1": [],
-        "test_roc_auc": [],
+        "train_loss": [], "train_acc": [], "train_precision": [], "train_recall": [], "train_f1": [], "train_roc_auc": [],
+        "test_loss": [], "test_acc": [], "test_precision": [], "test_recall": [], "test_f1": [], "test_roc_auc": [],
     }
 
+    best_loss = float("inf")
+    epochs_no_improve = 0
+    best_model_state = None
+
     for epoch in tqdm(range(epochs)):
-        train_loss, train_acc, train_prec, train_rec, train_f1, train_auc = (
-            train_step_NODE(model, train_dataloader, loss_fn, optimizer, device)
-        )
-        test_loss, test_acc, test_prec, test_rec, test_f1, test_auc = test_step_NODE(
-            model, test_dataloader, loss_fn, device
-        )
+        train_metrics = train_step_NODE(model, train_dataloader, loss_fn, optimizer, device)
+        test_metrics = test_step_NODE(model, test_dataloader, loss_fn, device)
 
-        results["train_loss"].append(train_loss)
-        results["train_acc"].append(train_acc)
-        results["train_precision"].append(train_prec)
-        results["train_recall"].append(train_rec)
-        results["train_f1"].append(train_f1)
-        results["train_roc_auc"].append(train_auc)
+        results["train_loss"].append(train_metrics[0])
+        results["train_acc"].append(train_metrics[1])
+        results["train_precision"].append(train_metrics[2])
+        results["train_recall"].append(train_metrics[3])
+        results["train_f1"].append(train_metrics[4])
+        results["train_roc_auc"].append(train_metrics[5])
 
-        results["test_loss"].append(test_loss)
-        results["test_acc"].append(test_acc)
-        results["test_precision"].append(test_prec)
-        results["test_recall"].append(test_rec)
-        results["test_f1"].append(test_f1)
-        results["test_roc_auc"].append(test_auc)
+        results["test_loss"].append(test_metrics[0])
+        results["test_acc"].append(test_metrics[1])
+        results["test_precision"].append(test_metrics[2])
+        results["test_recall"].append(test_metrics[3])
+        results["test_f1"].append(test_metrics[4])
+        results["test_roc_auc"].append(test_metrics[5])
 
-        print(
-            f"Epoch {epoch+1} | "
-            f"Train Loss: {train_loss:.4f}, Acc: {train_acc:.4f}, F1: {train_f1:.4f}, ROC-AUC: {train_auc:.4f} || "
-            f"Test Loss: {test_loss:.4f}, Acc: {test_acc:.4f}, F1: {test_f1:.4f}, ROC-AUC: {test_auc:.4f}"
-        )
+        # Early stopping check
+        if test_metrics[0] < best_loss:
+            best_loss = test_metrics[0]
+            best_model_state = model.state_dict()
+            epochs_no_improve = 0
+        else:
+            epochs_no_improve += 1
+
+        if epochs_no_improve >= patience:
+            print(f"Early stopping triggered at epoch {epoch+1}")
+            break
+    print(
+        f"Epoch {epoch+1} | "
+        f"Train Loss: {train_metrics[0]:.4f}, Acc: {train_metrics[1]:.4f}, "
+        f"Precision: {train_metrics[2]:.4f}, Recall: {train_metrics[3]:.4f}, "
+        f"F1: {train_metrics[4]:.4f}, ROC-AUC: {train_metrics[5]:.4f} || "
+        f"Test Loss: {test_metrics[0]:.4f}, Acc: {test_metrics[1]:.4f}, "
+        f"Precision: {test_metrics[2]:.4f}, Recall: {test_metrics[3]:.4f}, "
+        f"F1: {test_metrics[4]:.4f}, ROC-AUC: {test_metrics[5]:.4f}"
+    )
+
+    # Load best model
+    if best_model_state is not None:
+        model.load_state_dict(best_model_state)
 
     return results
