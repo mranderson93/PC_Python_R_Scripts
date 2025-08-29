@@ -1,4 +1,5 @@
-from tqdm.auto import tqdm
+import torch
+import torch.nn as nn
 from torchmetrics.classification import (
     BinaryAccuracy,
     BinaryPrecision,
@@ -6,8 +7,7 @@ from torchmetrics.classification import (
     BinaryF1Score,
     BinaryAUROC,
 )
-import torch
-import torch.nn as nn
+from tqdm.auto import tqdm
 
 
 # === Train Step ===
@@ -126,6 +126,7 @@ def test_step(model, dataloader, loss_fn, device):
 
 
 # === Training Loop ===
+# === Training Loop with Early Stopping ===
 def train_EMLP(
     model: torch.nn.Module,
     train_dataloader: torch.utils.data.DataLoader,
@@ -133,7 +134,8 @@ def train_EMLP(
     optimizer: torch.optim.Optimizer,
     loss_fn: torch.nn.Module,
     device: torch.device,
-    epochs: int = 5,
+    epochs: int = 50,
+    patience: int = 5,  # <-- early stopping patience
 ):
 
     results = {
@@ -151,6 +153,9 @@ def train_EMLP(
         "test_roc_auc": [],
     }
 
+    best_acc = 0.0
+    patience_counter = 0
+
     for epoch in tqdm(range(epochs)):
         train_loss, train_acc, train_prec, train_rec, train_f1, train_auc = train_step(
             model, train_dataloader, loss_fn, optimizer, device
@@ -160,6 +165,7 @@ def train_EMLP(
             model, test_dataloader, loss_fn, device
         )
 
+        # Save metrics
         results["train_loss"].append(train_loss)
         results["train_acc"].append(train_acc)
         results["train_precision"].append(train_prec)
@@ -181,5 +187,16 @@ def train_EMLP(
             f"Test Loss: {test_loss:.4f} | Acc: {test_acc:.4f} | Prec: {test_prec:.4f} | Recall: {test_rec:.4f} | "
             f"F1: {test_f1:.4f} | ROC-AUC: {test_auc:.4f}"
         )
+
+        # --- Early stopping logic ---
+        if test_acc > best_acc:
+            best_acc = test_acc
+            patience_counter = 0
+        else:
+            patience_counter += 1
+
+        if patience_counter >= patience:
+            print(f"Early stopping triggered at epoch {epoch+1}")
+            break
 
     return results
