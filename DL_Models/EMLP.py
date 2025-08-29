@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class OmicsMLP(nn.Module):
     def __init__(
         self,
@@ -41,10 +40,9 @@ class OmicsMLP(nn.Module):
         self.base_hidden_units = hidden_units
 
         # Define layers dynamically (use max sizes)
-        layers = []
-        prev_dim = input_dim
         self.linears = nn.ModuleList()
         self.bns = nn.ModuleList()
+        prev_dim = input_dim
 
         for hidden_dim in hidden_units:
             max_dim = hidden_dim  # maximum width
@@ -52,9 +50,10 @@ class OmicsMLP(nn.Module):
             self.bns.append(nn.BatchNorm1d(max_dim))
             prev_dim = max_dim
 
-        self.final = nn.Linear(prev_dim, output_dim)
+        self.final = nn.Linear(prev_dim, 1)
 
     def forward(self, x_numeric, x_categ=None):
+        # Combine numeric + categorical
         if self.embeddings is not None and x_categ is not None:
             embedded = [emb(x_c) for emb, x_c in zip(self.embeddings, x_categ)]
             embedded = torch.cat(embedded, dim=1)
@@ -63,7 +62,7 @@ class OmicsMLP(nn.Module):
             x = x_numeric
 
         # compute dropout probability from learnable parameter
-        dropout_p = torch.sigmoid(self.logit_dropout)  # ensures value ∈ (0,1)
+        dropout_p = torch.sigmoid(self.logit_dropout).item()  # convert tensor → float
 
         # forward through dynamically scaled layers
         for linear, bn, base_dim in zip(self.linears, self.bns, self.base_hidden_units):
