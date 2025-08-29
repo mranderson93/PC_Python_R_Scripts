@@ -82,7 +82,7 @@ class AutoInt(nn.Module):
         )
 
         # Output layer
-        self.output_layer = nn.Linear(embed_dim, output_dim)
+        self.output_layer = nn.Linear(embed_dim, 1)
 
         # Save hyperparameters for reference
         self.hyperparams = {
