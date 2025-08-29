@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class DNC(nn.Module):
     """
     Differentiable Neural Computer (DNC) for tabular/omics data.
@@ -10,7 +9,7 @@ class DNC(nn.Module):
     Args:
         input_dim (int): Number of input features (numeric + embeddings).
         hidden_dim (int): Hidden dimension of controller RNN.
-        output_dim (int): Output dimension (e.g., 1 for binary classification).
+        output_dim (int): Output dimension (1 for binary classification).
         memory_units (int): Number of memory slots.
         memory_unit_size (int): Size of each memory slot.
         read_heads (int): Number of read heads.
@@ -20,8 +19,8 @@ class DNC(nn.Module):
     def __init__(
         self,
         input_dim,
-        hidden_dim=128,
-        output_dim=2,
+        hidden_dim=64,
+        output_dim=1,           # single output for BCE
         memory_units=32,
         memory_unit_size=64,
         read_heads=4,
@@ -36,7 +35,7 @@ class DNC(nn.Module):
         self.read_heads = read_heads
         self.num_layers = num_layers
 
-        # Controller RNN
+        # Controller LSTM
         self.controller = nn.LSTM(
             input_dim + read_heads * memory_unit_size,
             hidden_dim,
@@ -46,49 +45,42 @@ class DNC(nn.Module):
 
         # Memory parameters
         self.memory = nn.Parameter(torch.zeros(memory_units, memory_unit_size))
-        self.read_weights = nn.Parameter(torch.zeros(read_heads, memory_units))
-        self.write_weights = nn.Parameter(torch.zeros(memory_units))
-        self.read_vectors = nn.Parameter(torch.zeros(read_heads, memory_unit_size))
 
         # Output layer
-        self.fc_out = nn.Linear(hidden_dim + read_heads * memory_unit_size, output_dim)
+        self.fc_out = nn.Linear(hidden_dim + memory_unit_size, 1)
 
     def forward(self, x):
         """
         Forward pass.
 
         Args:
-            x (torch.Tensor): [batch, seq_len, input_dim] input tensor
+            x (torch.Tensor): [batch, input_dim]
         Returns:
-            logits (torch.Tensor): [batch, output_dim]
+            logits (torch.Tensor): [batch]
         """
-        batch_size, seq_len, _ = x.size()
-        read_vectors = self.read_vectors.unsqueeze(0).repeat(batch_size, 1, 1)
-        outputs = []
+        batch_size = x.size(0)
 
-        # Initialize controller hidden states
+        # Initialize LSTM hidden states
         h = torch.zeros(self.num_layers, batch_size, self.hidden_dim).to(x.device)
         c = torch.zeros(self.num_layers, batch_size, self.hidden_dim).to(x.device)
 
-        for t in range(seq_len):
-            xt = x[:, t, :]
-            rcat = torch.cat([xt, read_vectors.view(batch_size, -1)], dim=-1).unsqueeze(
-                1
-            )
-            out, (h, c) = self.controller(rcat, (h, c))
+        # Expand input to sequence length 1
+        x_seq = x.unsqueeze(1)  # [batch, seq_len=1, input_dim]
 
-            # Simple memory update: write and read
-            # For simplicity, using softmax over memory for reading
-            mem = F.softmax(self.memory, dim=0)
-            read_vectors = (
-                torch.einsum("ij,kj->ki", mem, out.squeeze(1))
-                .unsqueeze(0)
-                .repeat(self.read_heads, 1, 1)
-            )
+        # Initial read vectors
+        read_vectors = torch.zeros(batch_size, self.read_heads * self.memory_unit_size).to(x.device)
+        lstm_input = torch.cat([x_seq, read_vectors.unsqueeze(1)], dim=-1)  # [batch, seq_len=1, input+read]
 
-            out_combined = torch.cat(
-                [out.squeeze(1), read_vectors.view(batch_size, -1)], dim=-1
-            )
-            outputs.append(self.fc_out(out_combined))
+        # Pass through LSTM controller
+        out, (h, c) = self.controller(lstm_input, (h, c))  # [batch, 1, hidden_dim]
 
-        return torch.stack(outputs, dim=1).mean(dim=1)  # aggregate sequence
+        # Memory read: mean of memory slots
+        mem = F.softmax(self.memory, dim=0)  # [memory_units, memory_unit_size]
+        read_vectors = mem.unsqueeze(0).repeat(batch_size, 1, 1).mean(dim=1)  # [batch, memory_unit_size]
+
+        # Concatenate LSTM output with read vectors
+        combined = torch.cat([out.squeeze(1), read_vectors], dim=-1)  # [batch, hidden_dim + memory_unit_size]
+
+        # Output layer
+        logits = self.fc_out(combined)  # [batch, 1]
+        return logits.squeeze(-1)       # [batch] for BCEWithLogitsLoss
