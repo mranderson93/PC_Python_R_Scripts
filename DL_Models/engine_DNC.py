@@ -161,12 +161,13 @@ def train_DNC(
         results["test_f1"].append(test_f1)
         results["test_roc_auc"].append(test_auc)
 
-        print(
-            f"Epoch: {epoch+1} | "
-            f"Train Loss: {train_loss:.4f} | Acc: {train_acc:.4f} | Prec: {train_prec:.4f} | Recall: {train_rec:.4f} | "
-            f"F1: {train_f1:.4f} | ROC-AUC: {train_auc:.4f} || "
-            f"Test Loss: {test_loss:.4f} | Acc: {test_acc:.4f} | Prec: {test_prec:.4f} | Recall: {test_rec:.4f} | "
-            f"F1: {test_f1:.4f} | ROC-AUC: {test_auc:.4f}"
-        )
+    print(
+        f"Epoch: {epoch+1} | "
+        f"Train Loss: {train_loss:.4f} | Acc: {train_acc:.4f} | Prec: {train_prec:.4f} | Recall: {train_rec:.4f} | "
+        f"F1: {train_f1:.4f} | ROC-AUC: {train_auc:.4f} || "
+        f"Test Loss: {test_loss:.4f} | Acc: {test_acc:.4f} | Prec: {test_prec:.4f} | Recall: {test_rec:.4f} | "
+        f"F1: {test_f1:.4f} | ROC-AUC: {test_auc:.4f}"
+    )
 
     return results
+
