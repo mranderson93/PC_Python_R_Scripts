@@ -43,8 +43,10 @@ def create_omics_dataloader(
 
 
 # Train, Test Data
-Train_data = pd.read_csv("../data/smoteenn_resampled_train_data.csv")
-Test_data = pd.read_csv("../data/smoteenn_resampled_test_data.csv")
+# "./drive/MyDrive/Prostate Cancer/Prostate_Cancer_DataSets/Omics_Datasets/smoteenn_resampled_train_data_bottlenec_200.csv"
+# "./drive/MyDrive/Prostate Cancer/Prostate_Cancer_DataSets/Omics_Datasets/smoteenn_resampled_test_data_bottlenec_200.csv"
+Train_data = pd.read_csv("./drive/MyDrive/Prostate Cancer/Prostate_Cancer_DataSets/Omics_Datasets//smoteenn_resampled_train_data.csv")
+Test_data = pd.read_csv("./drive/MyDrive/Prostate Cancer/Prostate_Cancer_DataSets/Omics_Datasets/smoteenn_resampled_test_data.csv")
 
 BATCH_SIZE = 16
 def pass_dataloader():
